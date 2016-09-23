@@ -208,12 +208,16 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	if (height > dstImg.rows)
 		height = dstImg.rows;
 
+	// get ROI actual from destination image
 	cv::Rect rect(pos.x, pos.y, width, height);
+
+	// rebuild ROI of image text overlayed in case of out of destination image
 	cv::Rect rectText(0, 0, width, height);
 	cv::Mat blendImg(dstImg, rect);
 	cv::Mat blendText(text_clr, rectText);
 	cv::Mat blendBgrd(bgrd_clr, rectText);
 
+	// build overlayed ROI of destination image with gray scale
 	coeff.clear();
 	coeff.push_back(gray_img(rectText));
 	coeff.push_back(gray_img(rectText));
@@ -221,9 +225,11 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	cv::merge(coeff, coeffMat);
 	cv::multiply(coeffMat, blendImg, blendImg, 1.0/255.0);
 
+	// now merge text to image
 	cv::add(blendText, blendBgrd, blendText);
 	cv::add(blendText, blendImg, blendImg);
 
+	// copy back to expected ROI of destination image
 	blendImg.copyTo(dstImg(rect));
 
 	return 0;
