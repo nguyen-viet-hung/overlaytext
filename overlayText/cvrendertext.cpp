@@ -65,7 +65,7 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	// Get total width
 	unsigned int total_width = 0;
 	long max_top = 0;
-	long max_bottom = 0;
+	long min_bottom = 0;
 	unsigned int max_height = 0;
 
 	for (int i = 0; i < std::wcslen(text); i++) {
@@ -90,11 +90,11 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 		total_width += (mFace->glyph->advance.x >> 6);
 
 		max_top = std::max(max_top, bbox.yMax + 1);
-		max_bottom = std::min(max_bottom, bbox.yMin - 1);
+		min_bottom = std::min(min_bottom, bbox.yMin - 1);
 		FT_Done_Glyph(glyph);
 	}
 
-	max_height = (unsigned int)(max_top - max_bottom);
+	max_height = (unsigned int)(max_top - min_bottom);
 
 	// Copy grayscale image from FreeType to OpenCV
 	cv::Mat gray(max_height, total_width, CV_8UC1, cv::Scalar::all(0));
@@ -149,8 +149,8 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 		bgrOpacity = 0.0;
 
 	double opacity = 0.9375*bgrOpacity + 0.0625; //(ax+b)
-	gray_bgr *= opacity;
 	gray_img = gray_bgr * (1.0 - opacity);
+	gray_bgr *= opacity;
 
 	// fill text color
 	coeff.push_back(gray);
