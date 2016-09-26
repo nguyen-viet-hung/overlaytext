@@ -229,8 +229,5 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	cv::add(blendText, blendBgrd, blendText);
 	cv::add(blendText, blendImg, blendImg);
 
-	// copy back to expected ROI of destination image
-	blendImg.copyTo(dstImg(rect));
-
 	return 0;
 }
