@@ -168,10 +168,7 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	cv::merge(coeff, coeffMat);
 	cv::multiply(coeffMat, bgrd_clr, bgrd_clr, 1.0/255.0);
 
-	// now fill background to result
-	cv::add(text_clr, bgrd_clr, text_clr);
-
-	// re-calculate position to render text
+	// re-calculate position to render text over destination image
 	switch (xMargin) {
 	case CVRenderText::CENTER_MARGIN:
 		pos.x -= total_width / 2;
