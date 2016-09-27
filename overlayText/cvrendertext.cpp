@@ -51,7 +51,7 @@ int CVRenderText::setFont(const char* path_to_font)
 }
 
 int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text, size_t textSize, Justify xMargin, Justify yMargin, 
-							 cv::Scalar textColor, cv::Scalar bgrColor, double bgrOpacity)
+							 cv::Scalar textColor, bool hasBackgrnd, cv::Scalar bgrColor, double bgrOpacity)
 {
 	FT_Error error;
 
@@ -132,42 +132,6 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 		FT_Done_Glyph(glyph);
 	}
 
-	cv::Mat gray_bgr(gray.size(), CV_8UC1, cv::Scalar::all(255));
-	cv::Mat gray_img(gray.size(), CV_8UC1, cv::Scalar::all(255));
-	cv::Mat text_clr(gray.size(), CV_8UC3, textColor);
-	cv::Mat bgrd_clr(gray.size(), CV_8UC3, bgrColor);
-	cv::Mat coeffMat(gray.size(), CV_32FC3);
-	std::vector<cv::Mat> coeff;
-
-	// calculate gray for background
-	cv::subtract(gray_bgr, gray, gray_bgr);
-
-	// normalize opacity
-	if (bgrOpacity > 1.0)
-		bgrOpacity = 1.0;
-	else if (bgrOpacity < 0.0)
-		bgrOpacity = 0.0;
-
-	double opacity = 0.9375*bgrOpacity + 0.0625; //(ax+b)
-	gray_img = gray_bgr * (1.0 - opacity);
-	gray_bgr *= opacity;
-
-	// fill text color
-	coeff.push_back(gray);
-	coeff.push_back(gray);
-	coeff.push_back(gray);
-
-	cv::merge(coeff, coeffMat);
-	cv::multiply(coeffMat, text_clr, text_clr, 1.0/255.0);
-
-	// fill background color
-	coeff.clear();
-	coeff.push_back(gray_bgr);
-	coeff.push_back(gray_bgr);
-	coeff.push_back(gray_bgr);
-	cv::merge(coeff, coeffMat);
-	cv::multiply(coeffMat, bgrd_clr, bgrd_clr, 1.0/255.0);
-
 	// re-calculate position to render text over destination image
 	switch (xMargin) {
 	case CVRenderText::CENTER_MARGIN:
@@ -210,21 +174,79 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 
 	// rebuild ROI of image text overlayed in case of out of destination image
 	cv::Rect rectText(0, 0, width, height);
-	cv::Mat blendImg(dstImg, rect);
-	cv::Mat blendText(text_clr, rectText);
-	cv::Mat blendBgrd(bgrd_clr, rectText);
 
-	// build overlayed ROI of destination image with gray scale
-	coeff.clear();
-	coeff.push_back(gray_img(rectText));
-	coeff.push_back(gray_img(rectText));
-	coeff.push_back(gray_img(rectText));
+	cv::Mat gray_bgr(gray.size(), CV_8UC1, cv::Scalar::all(255));
+	cv::Mat gray_img(gray.size(), CV_8UC1, cv::Scalar::all(255));
+	cv::Mat text_clr(gray.size(), CV_8UC3, textColor);
+	cv::Mat bgrd_clr(gray.size(), CV_8UC3, bgrColor);
+	cv::Mat coeffMat(gray.size(), CV_32FC3);
+	std::vector<cv::Mat> coeff;
+
+	// calculate gray for background
+	cv::subtract(gray_bgr, gray, gray_bgr);
+	// calculate gray for image
+	cv::subtract(gray_img, gray, gray_img);
+
+	// fill text color
+	coeff.push_back(gray);
+	coeff.push_back(gray);
+	coeff.push_back(gray);
+
 	cv::merge(coeff, coeffMat);
-	cv::multiply(coeffMat, blendImg, blendImg, 1.0/255.0);
+	cv::multiply(coeffMat, text_clr, text_clr, 1.0/255.0);
 
-	// now merge text to image
-	cv::add(blendText, blendBgrd, blendText);
-	cv::add(blendText, blendImg, blendImg);
+	if (hasBackgrnd) {
+		// normalize opacity
+		if (bgrOpacity > 1.0)
+			bgrOpacity = 1.0;
+		else if (bgrOpacity < 0.0)
+			bgrOpacity = 0.0;
+
+		double opacity = 0.9375*bgrOpacity + 0.0625; //(ax+b)
+		gray_img *= (1.0 - opacity);
+		gray_bgr *= opacity;
+
+		// fill background color
+		coeff.clear();
+		coeff.push_back(gray_bgr);
+		coeff.push_back(gray_bgr);
+		coeff.push_back(gray_bgr);
+		cv::merge(coeff, coeffMat);
+		cv::multiply(coeffMat, bgrd_clr, bgrd_clr, 1.0/255.0);
+	
+		cv::Mat blendImg(dstImg, rect);
+		cv::Mat blendText(text_clr, rectText);
+		cv::Mat blendBgrd(bgrd_clr, rectText);
+
+		// build overlayed ROI of destination image with gray scale
+		coeff.clear();
+		coeff.push_back(gray_img(rectText));
+		coeff.push_back(gray_img(rectText));
+		coeff.push_back(gray_img(rectText));
+		cv::merge(coeff, coeffMat);
+		cv::multiply(coeffMat, blendImg, blendImg, 1.0/255.0);
+
+		// now merge text to image
+		cv::add(blendImg, blendText, blendImg);
+		cv::add(blendImg, blendBgrd, blendImg);
+	}
+	else {
+		cv::Mat blendImg(dstImg, rect);
+		cv::Mat blendText(text_clr, rectText);
+
+		// build overlayed ROI of destination image with gray scale
+		coeff.clear();
+		coeff.push_back(gray_bgr(rectText));
+		coeff.push_back(gray_bgr(rectText));
+		coeff.push_back(gray_bgr(rectText));
+		cv::merge(coeff, coeffMat);
+		cv::multiply(coeffMat, blendImg, blendImg, 1.0/255.0);
+
+		// now merge text to image
+		cv::add(blendImg, blendText, blendImg);
+	}
+
+	
 
 	return 0;
 }
