@@ -87,7 +87,7 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 
 		FT_Glyph_Get_CBox( glyph, FT_GLYPH_BBOX_PIXELS, &bbox );
 		
-		total_width += (mFace->glyph->advance.x >> 6);
+		total_width += std::max(bbox.xMax, mFace->glyph->advance.x >> 6);
 
 		max_top = std::max(max_top, bbox.yMax + 1);
 		min_bottom = std::min(min_bottom, bbox.yMin - 1);
@@ -128,7 +128,7 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 		cv::Mat gray_part(gray, rect);
 		glyph_img.copyTo(gray_part);
 
-		x += (mFace->glyph->advance.x >> 6);
+		x += std::max(bbox.xMax, mFace->glyph->advance.x >> 6);
 		FT_Done_Glyph(glyph);
 	}
 
@@ -163,11 +163,11 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	int width = total_width;
 	int height = max_height;
 
-	if (width > dstImg.cols)
-		width = dstImg.cols;
+	if (width > dstImg.cols - pos.x)
+		width = dstImg.cols - pos.x;
 
-	if (height > dstImg.rows)
-		height = dstImg.rows;
+	if (height > dstImg.rows - pos.y)
+		height = dstImg.rows - pos.y;
 
 	// get ROI actual from destination image
 	cv::Rect rect(pos.x, pos.y, width, height);
