@@ -5,6 +5,10 @@
 
 #include FT_GLYPH_H
 
+#ifdef _MSC_VER
+#pragma warning(disable:4996)
+#endif
+
 CVRenderText::CVRenderText()
 {
 	FT_Error error;
@@ -249,4 +253,14 @@ int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const wchar_t* text
 	
 
 	return 0;
+}
+
+int CVRenderText::renderText(cv::Mat &dstImg, cv::Point pos, const char* text, size_t textSize, Justify xMargin, Justify yMargin, 
+							 cv::Scalar textColor, bool hasBackgrnd, cv::Scalar bgrColor, double bgrOpacity)
+{
+	std::string mb(text);
+	std::wstring ws(mb.size(), L' ');
+
+	ws.resize(std::mbstowcs(&ws[0], mb.c_str(), mb.size()));
+	return renderText(dstImg, pos, ws.c_str(), textSize, xMargin, yMargin, textColor, hasBackgrnd, bgrColor, bgrOpacity);
 }
